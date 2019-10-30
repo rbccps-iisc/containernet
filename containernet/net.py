@@ -110,27 +110,18 @@ from mininet.util import ( quietRun, fixLimits, numCores, ensureRoot,
 from containernet.cli import CLI
 from containernet.node import Docker
 from containernet.term import cleanUpScreens, makeTerms
-from containernet.link import Link, Intf
+from containernet.link import Intf
 
 from mn_wifi.net import Mininet_wifi
-from mn_wifi.node import AccessPoint, AP, Station, Car, \
-    OVSKernelAP, physicalAP
-from mn_wifi.wmediumdConnector import error_prob, snr, interference
-from mn_wifi.link import wirelessLink, wmediumd, Association, \
-    _4address, TCWirelessLink, TCLinkWirelessStation, ITSLink, \
-    wifiDirectLink, adhoc, mesh, physicalMesh, physicalWifiDirectLink
-from mn_wifi.clean import Cleanup as cleanup_mnwifi
-from mn_wifi.devices import CustomRate, DeviceRange
+from mn_wifi.node import AP, Station, Car, \
+    OVSKernelAP
+from mn_wifi.wmediumdConnector import snr, interference
+from mn_wifi.link import wmediumd, TCWirelessLink, wifiDirectLink, \
+    adhoc, mesh, master, managed, _4addrClient, _4addrAP
 from mn_wifi.energy import Energy
-from mn_wifi.telemetry import parseData, telemetry as run_telemetry
-from mn_wifi.mobility import tracked as trackedMob, model as mobModel, mobility as mob
-from mn_wifi.plot import plot2d, plot3d, plotGraph
-from mn_wifi.module import module
-from mn_wifi.propagationModels import propagationModel
-from mn_wifi.vanet import vanet
-from mn_wifi.sixLoWPAN.net import Mininet_6LoWPAN as sixlowpan
-from mn_wifi.sixLoWPAN.module import module as sixLoWPAN_module
-from mn_wifi.sixLoWPAN.link import sixLoWPANLink
+from mn_wifi.mobility import mobility as mob
+from mn_wifi.plot import plot2d
+from mn_wifi.util import netParse6
 
 # Mininet version: should be consistent with README and LICENSE
 VERSION = "2.3.0d6"
@@ -147,7 +138,8 @@ class Containernet( Mininet_wifi ):
                  accessPoint=OVSKernelAP, host=Host, station=Station,
                  car=Car, controller=DefaultController,
                  link=TCWirelessLink, intf=Intf, build=True, xterms=False,
-                 cleanup=False, ipBase='10.0.0.0/8', inNamespace=False,
+                 cleanup=False, ipBase='10.0.0.0/8', ip6Base='2001:0:0:0:0:0:0:0/64',
+                 inNamespace=False,
                  autoSetMacs=False, autoStaticArp=False, autoPinCpus=False,
                  listenPort=None, waitConnected=False, ssid="new-ssid",
                  mode="g", channel=1, wmediumd_mode=snr, roads=0,
@@ -185,10 +177,13 @@ class Containernet( Mininet_wifi ):
         self.link = link
         self.intf = intf
         self.ipBase = ipBase
+        self.ip6Base = ip6Base
         self.ipBaseNum, self.prefixLen = netParse( self.ipBase )
+        self.ip6BaseNum, self.prefixLen6 = netParse6(self.ip6Base)
         hostIP = ( 0xffffffff >> self.prefixLen ) & self.ipBaseNum
         # Start for address allocation
         self.nextIP = hostIP if hostIP > 0 else 1
+        self.nextIP6 = 1
         self.inNamespace = inNamespace
         self.xterms = xterms
         self.cleanup = cleanup
@@ -638,14 +633,13 @@ class Containernet( Mininet_wifi ):
         if self.autoStaticArp:
             self.staticArp()
 
-        func = ['adhoc', 'mesh', 'wifiDirect']
         for node in self.stations:
-            for wlan in range(0, len(node.params['wlan'])):
-                if not isinstance(node, AP) and node.func[0] != 'ap' \
-                        and node.func[wlan] not in func:
+            for wlan, intf in enumerate(node.wintfs.values()):
+                if not isinstance(intf, master) and not isinstance(intf, adhoc) \
+                        and not isinstance(intf, mesh) \
+                        and not isinstance(intf, wifiDirectLink):
                     if isinstance(node, Station) and not hasattr(node, 'range'):
-                        node.params['range'][wlan] = \
-                            int(node.params['range'][wlan]) / 5
+                        intf.range = int(intf.range) / 5
 
         if self.allAutoAssociation:
             if self.autoAssociation and not self.configureWiFiDirect:

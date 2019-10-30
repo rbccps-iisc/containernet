@@ -20,7 +20,7 @@ setup(
     description='Mininet fork that adds Container support.',
     author='Manuel Peuster',
     author_email='manuel.peuster@upb.de',
-    packages=[ 'containernet', 'containernet.examples' ],
+    packages=[ 'containernet', 'containernet.examples', 'mininet-wifi.mn_wifi', 'mininet-wifi.mininet.mininet' ],
     long_description="""
         Mininet is a network emulator which uses lightweight
         virtualization to create virtual networks for rapid
