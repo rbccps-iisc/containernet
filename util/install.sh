@@ -209,6 +209,8 @@ function mn_wifi_deps {
     sudo PYTHON=${PYTHON} make install
     popd
 
+    sudo PYTHON=${PYTHON} pip install docker
+
     pushd $MININET_DIR/containernet
     sudo PYTHON=${PYTHON} make install
     popd
