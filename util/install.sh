@@ -195,8 +195,6 @@ function mn_deps {
 # Install Mininet-WiFi deps
 function mn_wifi_deps {
     echo "Installing Mininet/Mininet-WiFi dependencies"
-    $install aptitude apt-transport-https ca-certificates curl build-essential software-properties-common docker-ce
-
     echo "Installing Mininet-WiFi core"
     pushd $MININET_DIR/containernet
     if [ -d mininet-wifi ]; then
@@ -209,6 +207,14 @@ function mn_wifi_deps {
     sudo PYTHON=${PYTHON} make install
     popd
 
+    $install aptitude apt-transport-https ca-certificates curl build-essential software-properties-common gnupg
+    sudo install -m 0755 -d /etc/apt/keyrings
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+    sudo chmod a+r /etc/apt/keyrings/docker.gpg
+    echo "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+         "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
+         sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+    $install docker-ce
     sudo PYTHON=${PYTHON} pip install docker
 
     pushd $MININET_DIR/containernet
